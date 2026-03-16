@@ -1,0 +1,7 @@
+2026-02-15T20:26:57+00:00 INFO Automatic database update triggered.
+2026-02-15T20:26:57+00:00 INFO Scheduling database updates (from 10.4.3)...
+2026-02-15T20:26:57+00:00 INFO   [10.5.0] Scheduled 'wc_update_1050_migrate_brand_permalink_setting'.
+2026-02-15T20:26:57+00:00 INFO   [10.5.0] Scheduled 'wc_update_1050_enable_autoload_options'.
+2026-02-15T20:26:57+00:00 INFO   [10.5.0] Scheduled 'wc_update_1050_add_idx_user_email'.
+2026-02-15T20:26:57+00:00 INFO   [10.5.0] Scheduled 'wc_update_1050_remove_deprecated_marketplace_option'.
+2026-02-15T20:26:57+00:00 INFO Database updates scheduled.
