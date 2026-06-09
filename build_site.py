@@ -1192,6 +1192,33 @@ def layout_html(
         .map((value) => value.trim().toLowerCase())
         .filter(Boolean);
 
+    const featuredProductsGrid = document.querySelector('[data-featured-products]');
+    if (featuredProductsGrid) {
+      const featuredProductCount = 12;
+      fetch('/products/', { cache: 'force-cache' })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Unable to load product catalog');
+          }
+          return response.text();
+        })
+        .then((catalogHtml) => {
+          const catalog = new DOMParser().parseFromString(catalogHtml, 'text/html');
+          const products = Array.from(catalog.querySelectorAll('.product-grid [data-product-item]'));
+          for (let index = products.length - 1; index > 0; index -= 1) {
+            const randomIndex = Math.floor(Math.random() * (index + 1));
+            [products[index], products[randomIndex]] = [products[randomIndex], products[index]];
+          }
+          const featuredProducts = products
+            .slice(0, featuredProductCount)
+            .map((product) => document.importNode(product, true));
+          if (featuredProducts.length) {
+            featuredProductsGrid.replaceChildren(...featuredProducts);
+          }
+        })
+        .catch(() => {});
+    }
+
     const productFilterRoots = document.querySelectorAll('[data-product-filter-root]');
     for (const root of productFilterRoots) {
       const searchInput = root.querySelector('[data-product-search]');
@@ -1326,27 +1353,39 @@ def layout_html(
       };
 
       const runSearch = async () => {
-        const query = (input.value || '').trim().toLowerCase();
-        if (query.length < 2) {
+        const rawQuery = (input.value || '').trim().toLowerCase();
+        if (rawQuery.length < 2) {
           hideResults();
           return;
         }
+        const query = rawQuery
+          .replace(/\\bheath\\b/g, 'health')
+          .replace(/\\bwi[\\s-]?fi\\b/g, 'wifi');
+        const queryTokens = query.split(/\\s+/).filter((token) => token.length > 1);
 
         const data = await loadSearchData();
         const scored = [];
         for (const item of data) {
           const haystack = String(item.search || '').toLowerCase();
-          if (!haystack.includes(query)) {
+          const phraseMatch = haystack.includes(query);
+          const tokenMatch = queryTokens.length > 0 && queryTokens.every((token) => haystack.includes(token));
+          if (!phraseMatch && !tokenMatch) {
             continue;
           }
           const title = String(item.title || '').toLowerCase();
           let score = 0;
           if (title.startsWith(query)) {
-            score += 9;
+            score += 10;
           } else if (title.includes(query)) {
-            score += 5;
+            score += 6;
           } else {
             score += 2;
+          }
+          if (phraseMatch) {
+            score += 3;
+          }
+          if (tokenMatch) {
+            score += Math.min(4, queryTokens.length);
           }
           scored.push({ score, item });
         }
@@ -1449,7 +1488,7 @@ def layout_html(
         </nav>
         <form class="site-search" role="search" data-site-search onsubmit="return false;">
           <label class="sr-only" for="site-search-input">Search Air Purifying Systems</label>
-          <input id="site-search-input" class="site-search-input" data-site-search-input type="search" placeholder="Search articles, products, pages..." autocomplete="off">
+          <input id="site-search-input" class="rec-search-input" data-site-search-input type="search" placeholder="Search articles, products, pages..." autocomplete="off">
           <div class="search-results" data-site-search-results hidden></div>
         </form>
       </div>
@@ -1540,6 +1579,38 @@ def recommendation_terms_from_slug(slug: str) -> set[str]:
     if "wifi" in clean or "wi fi" in clean:
         terms.update({"wifi", "smart"})
     return terms
+
+
+def recommendation_category_keywords(category: str) -> str:
+    lookup = {
+        "By Health Need": "health need wellness allergies asthma smoke mold pollen pet dander",
+        "By Room And Space": "room space bedroom nursery office kitchen living room basement large room small room",
+        "By Feature": "feature true hepa carbon filter wifi smart app quiet low noise sensor energy star uv ionizer",
+        "By Type": "type portable quiet whole house",
+        "By Use Case": "use case best for specific needs",
+    }
+    return lookup.get(category, "air purifier recommendations guides")
+
+
+def recommendation_search_text(title: str, slug: str, category: str = "") -> str:
+    clean_slug = (slug or "").strip("/")
+    category_label = category or recommendation_category_for_slug(clean_slug)
+    topic_text = recommendation_topic_from_slug(clean_slug, title).strip().lower()
+    topic_terms = " ".join(sorted(recommendation_terms_from_slug(clean_slug)))
+    blob = " ".join(
+        part
+        for part in [
+            title,
+            clean_slug.replace("-", " "),
+            topic_text,
+            category_label.lower(),
+            recommendation_category_keywords(category_label),
+            topic_terms,
+            "air purifier use case health need room and space feature",
+        ]
+        if part
+    )
+    return re.sub(r"\s+", " ", blob).strip().lower()
 
 
 def recommendation_product_blurb(product: dict[str, Any]) -> str:
@@ -2338,8 +2409,8 @@ def main() -> None:
     logo_url = attachment_url(site_logo_id) or "/assets/uploads/2024/01/airpurifying-systems-logo.svg"
     site_icon_url = attachment_url(site_icon_id) or "/assets/uploads/2024/01/airpurifying-fav-icon.svg"
 
-    # Reset output directories except build script itself.
-    keep = {"build_site.py", ".DS_Store"}
+    # Reset output directories except build script and repository metadata.
+    keep = {"build_site.py", ".DS_Store", ".git", ".gitignore"}
     for child in OUT_ROOT.iterdir():
         if child.name in keep:
             continue
@@ -2388,13 +2459,14 @@ def main() -> None:
         href = "/" if not route else f"/{route.strip('/')}/"
         title = (post.post_title or route.replace("-", " ").title()).strip()
         slug = route.strip("/")
-        search_text = f"{title} {slug.replace('-', ' ')}".strip().lower()
+        category = recommendation_category_for_slug(slug)
+        search_text = recommendation_search_text(title, slug, category)
         recommendation_entries.append(
             {
                 "title": title,
                 "href": href,
                 "slug": slug,
-                "category": recommendation_category_for_slug(slug),
+                "category": category,
                 "search_text": search_text,
             }
         )
@@ -3059,11 +3131,19 @@ def main() -> None:
         elif post.post_type == "product":
             search_kind = "Product"
         if not exclude_from_index:
+            search_extra_text = f"{meta_description} {post.post_name}"
+            if is_recommendation and post.post_type == "page":
+                rec_slug_for_search = post_route.strip("/") or post.post_name
+                rec_category = recommendation_category_for_slug(rec_slug_for_search)
+                search_extra_text = (
+                    f"{search_extra_text} {rec_category} "
+                    f"{recommendation_search_text(post.post_title, rec_slug_for_search, rec_category)}"
+                )
             add_search_entry(
                 title=post.post_title or display_title or "Untitled",
                 url=canonical,
                 item_type=search_kind,
-                extra_text=f"{meta_description} {post.post_name}",
+                extra_text=search_extra_text,
             )
 
         if post.post_type == "product" and post.post_name:
@@ -3224,12 +3304,6 @@ def main() -> None:
                 "image": absolute_url(image_url) if image_url else DOMAIN + logo_url,
             }
         )
-        add_search_entry(
-            title=entry["title"],
-            url=canonical,
-            item_type="Product",
-            extra_text=meta_description,
-        )
 
         card_image_html = ""
         card_target = amazon_url or f"/{product_path}/"
@@ -3248,6 +3322,20 @@ def main() -> None:
         card_use_case_values = "|".join(slugify(label, "filter") for label in card_use_case_labels)
         card_room_values = "|".join(slugify(label, "filter") for label in card_room_labels)
         card_feature_values = "|".join(slugify(label, "filter") for label in card_feature_labels)
+        facet_search_text = " ".join(
+            [
+                " ".join(card_use_case_labels),
+                " ".join(card_room_labels),
+                " ".join(card_feature_labels),
+                "air purifier use case health need room and space feature",
+            ]
+        ).strip()
+        add_search_entry(
+            title=entry["title"],
+            url=canonical,
+            item_type="Product",
+            extra_text=f"{meta_description} {facet_search_text}".strip(),
+        )
         card_search_blob = " ".join(
             [
                 str(entry.get("title", "")),
@@ -3255,6 +3343,7 @@ def main() -> None:
                 " ".join(card_use_case_labels),
                 " ".join(card_room_labels),
                 " ".join(card_feature_labels),
+                "use case health need room feature",
             ]
         ).strip()
         if image_url:
@@ -3330,6 +3419,16 @@ def main() -> None:
     <p class="hero-panel-note">Use guides and product pages together for faster decisions.</p>
   </aside>
 </section>
+<section class="content-section home-products">
+  <div class="section-head">
+    <h2>Featured Products</h2>
+    <a class="section-link" href="/products/">See all products</a>
+  </div>
+  <p class="section-intro">Direct Amazon links with quick access to specs and context.</p>
+  <div class="product-grid" data-featured-products>
+    {''.join(product_cards[:12])}
+  </div>
+</section>
 <section class="content-section home-use-cases">
   <div class="section-head">
     <h2>Start With Your Use Case</h2>
@@ -3347,16 +3446,6 @@ def main() -> None:
   <p class="section-intro">Fresh comparisons, explainer guides, and practical buying advice from the latest published pieces.</p>
   <div class="article-grid article-grid-home">
     {''.join(reversed(articles_index_cards[-12:]))}
-  </div>
-</section>
-<section class="content-section home-products">
-  <div class="section-head">
-    <h2>Featured Products</h2>
-    <a class="section-link" href="/products/">See all products</a>
-  </div>
-  <p class="section-intro">Direct Amazon links with quick access to specs and context.</p>
-  <div class="product-grid">
-    {''.join(product_cards[:12])}
   </div>
 </section>
 """
@@ -3551,11 +3640,17 @@ def main() -> None:
         ),
     )
     add_sitemap_url(products_canonical, site_lastmod)
+    product_collection_terms = " ".join(
+        sorted(product_use_case_labels | product_room_labels | product_feature_labels)
+    )
     add_search_entry(
         title="Products",
         url=products_canonical,
         item_type="Collection",
-        extra_text="air purifier products amazon",
+        extra_text=(
+            "air purifier products by use case health need room and space feature "
+            f"{product_collection_terms}"
+        ).strip(),
     )
     for image_url in product_card_images:
         add_page_image(products_canonical, image_url)
@@ -3649,11 +3744,17 @@ def main() -> None:
         ),
     )
     add_sitemap_url(recommendations_canonical, site_lastmod)
+    recommendation_collection_terms = " ".join(
+        sorted({entry["category"].lower() for entry in recommendation_entries})
+    )
     add_search_entry(
         title="Recommendations",
         url=recommendations_canonical,
         item_type="Collection",
-        extra_text="recommendations by use case",
+        extra_text=(
+            "recommendations by use case health need room and space feature type "
+            f"{recommendation_collection_terms}"
+        ).strip(),
     )
 
     articles_canonical = build_canonical("articles")
