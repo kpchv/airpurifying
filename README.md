@@ -14,7 +14,17 @@ This repository contains a static rebuild of the original WordPress site content
 
 ```bash
 python3 build_site.py
+python3 validate_site.py
 ```
+
+The builder uses the original WordPress SQL backup and reuses local uploads when
+available. It overwrites generated output without deleting unrelated files.
+Use `--output-dir /tmp/airpurify-preview --uploads-dir /path/to/uploads` to build
+into a separate directory. Run `python3 validate_site.py /tmp/airpurify-preview`
+to check that output. Article dates remain the original content dates.
+
+See [DISCOVERABILITY.md](DISCOVERABILITY.md) for the crawl policy, deployment
+checks, and remaining editorial improvements.
 
 ## Deploy to Cloudflare Pages
 

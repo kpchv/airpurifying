@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import html
 import json
 import re
@@ -24,9 +25,14 @@ SOURCE_ROOT = Path(
 )
 SQL_PATH = SOURCE_ROOT / "backup_2026-03-10-0812_Air_Purifying_Systems_b8bf6bdc6026-db"
 UPLOADS_PATH = SOURCE_ROOT / "uploads"
-OUT_ROOT = Path("/Users/k/Documents/airpurifying static")
+OUT_ROOT = Path(__file__).resolve().parent
 ASSETS_DIR = OUT_ROOT / "assets"
 UPLOADS_OUT = ASSETS_DIR / "uploads"
+PRODUCT_DETAIL_PATHS: dict[str, str] = {}
+HOME_DESCRIPTION = (
+    "Compare air purifiers by room size, filtration, noise, and features. "
+    "Explore product details, buying guides, and recommendations for your home."
+)
 
 PRODUCT_USE_CASE_ORDER = [
     "Allergies",
@@ -1088,6 +1094,12 @@ def layout_html(
     extra_head_tags: str = "",
     robots_directive: str = "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1",
 ) -> str:
+    affiliate_notice = ""
+    if 'rel="sponsored' in main_html:
+        affiliate_notice = (
+            '<p class="affiliate-notice">As an Amazon Associate, we earn from qualifying purchases. '
+            '<a href="/disclaimer/">Affiliate disclosure</a>.</p>'
+        )
     ld = "\n".join(
         f'<script type="application/ld+json">{json.dumps(obj, ensure_ascii=False)}</script>'
         for obj in json_ld
@@ -1496,6 +1508,7 @@ def layout_html(
   </header>
 
   <main class="shell">
+    {affiliate_notice}
     {main_html}
   </main>
 
@@ -1503,6 +1516,7 @@ def layout_html(
     <div class="shell footer-grid">
       <p>{html.escape(SITE_NAME)}. {html.escape(SITE_TAGLINE)}.</p>
       <p>Affiliate disclosure: As an Amazon Associate, this website may earn from qualifying purchases.</p>
+      <nav aria-label="Site information"><a href="/air-purifier-buying-guide/">Buying guide</a> · <a href="/contact/">Contact</a> · <a href="/disclaimer/">Disclosure</a> · <a href="/privacy-policy/">Privacy</a></nav>
       <p><a href="https://hepacertified.com/" rel="noopener">hepacertified.com</a></p>
     </div>
   </footer>
@@ -1521,6 +1535,13 @@ def write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def product_detail_path(product: dict[str, Any]) -> str:
+    """Only link to actual generated paths, including collision-resolved slugs."""
+    url = external_http_url(str(product.get("url", "")))
+    title = html_to_text(str(product.get("title", ""))).strip().casefold()
+    return PRODUCT_DETAIL_PATHS.get(url, "") or PRODUCT_DETAIL_PATHS.get(title, "")
+
+
 def product_card_html(product: dict[str, Any]) -> str:
     img = product.get("image", "")
     title = product.get("title", "")
@@ -1531,6 +1552,9 @@ def product_card_html(product: dict[str, Any]) -> str:
         f'<a class="btn" href="{html.escape(url)}" rel="sponsored nofollow noopener" target="_blank">View on Amazon</a>'
     )
     title_html = f'<a href="{html.escape(url)}" rel="sponsored nofollow noopener" target="_blank">{html.escape(title)}</a>'
+    detail_path = product_detail_path(product)
+    if detail_path:
+        title_html = f'<a href="{html.escape(detail_path)}">{html.escape(title)}</a>'
 
     image_html = ""
     if img:
@@ -1538,6 +1562,8 @@ def product_card_html(product: dict[str, Any]) -> str:
         image_html = (
             f'<a class="image-link" href="{html.escape(url)}" rel="sponsored nofollow noopener" target="_blank">{img_tag}</a>'
         )
+        if detail_path:
+            image_html = f'<a class="image-link" href="{html.escape(detail_path)}">{img_tag}</a>'
 
     return f"""<article class="product-card">
   <figure>{image_html}</figure>
@@ -1774,6 +1800,12 @@ def recommendation_product_card_html(product: dict[str, Any]) -> str:
     url = external_http_url(str(product.get("url", "")).strip())
     if not url:
         return ""
+    detail_path = product_detail_path(product)
+    title_link = (
+        f'<a href="{html.escape(detail_path)}">{html.escape(title)}</a>'
+        if detail_path else
+        f'<a href="{html.escape(url)}" rel="sponsored nofollow noopener" target="_blank">{html.escape(title)}</a>'
+    )
     image_url = str(product.get("image", "")).strip()
     blurb = recommendation_product_blurb(product)
     chips = recommendation_product_chips(product)
@@ -1790,11 +1822,16 @@ def recommendation_product_card_html(product: dict[str, Any]) -> str:
             f'<img src="{html.escape(image_url)}" alt="{html.escape(title)}" loading="lazy" decoding="async">'
             "</a>"
         )
+        if detail_path:
+            image_html = (
+                f'<a class="image-link" href="{html.escape(detail_path)}">'
+                f'<img src="{html.escape(image_url)}" alt="{html.escape(title)}" loading="lazy" decoding="async"></a>'
+            )
 
     return f"""<article class="rec-product-card">
   <figure>{image_html}</figure>
   <div class="rec-product-copy">
-    <h3><a href="{html.escape(url)}" rel="sponsored nofollow noopener" target="_blank">{html.escape(title)}</a></h3>
+    <h3>{title_link}</h3>
     <p class="rec-product-info">{html.escape(blurb)}</p>
     {chips_html}
     <p><a class="btn" href="{html.escape(url)}" rel="sponsored nofollow noopener" target="_blank">View on Amazon</a></p>
@@ -2409,20 +2446,10 @@ def main() -> None:
     logo_url = attachment_url(site_logo_id) or "/assets/uploads/2024/01/airpurifying-systems-logo.svg"
     site_icon_url = attachment_url(site_icon_id) or "/assets/uploads/2024/01/airpurifying-fav-icon.svg"
 
-    # Reset output directories except build script and repository metadata.
-    keep = {"build_site.py", ".DS_Store", ".git", ".gitignore"}
-    for child in OUT_ROOT.iterdir():
-        if child.name in keep:
-            continue
-        if child.is_dir():
-            shutil.rmtree(child)
-        else:
-            child.unlink()
-
+    # Overwrite generated files without deleting source, tests, or unrelated work.
     ensure_dir(ASSETS_DIR)
-    if UPLOADS_OUT.exists():
-        shutil.rmtree(UPLOADS_OUT)
-    shutil.copytree(UPLOADS_PATH, UPLOADS_OUT)
+    if UPLOADS_PATH.resolve() != UPLOADS_OUT.resolve():
+        shutil.copytree(UPLOADS_PATH, UPLOADS_OUT, dirs_exist_ok=True)
 
     # Collect published items
     published = [
@@ -2588,9 +2615,10 @@ def main() -> None:
         images_by_page.setdefault(page_url, set()).add(img)
 
     def register_product_redirect(source_path: str, destination_url: str) -> None:
-        target = external_http_url(destination_url)
-        if not target:
-            return
+        # Legacy product aliases consolidate onto an on-site product page.
+        target = destination_url
+        if not target.startswith("/products/") or target.startswith("//"):
+            raise ValueError("Product redirects must stay on the site")
         clean = source_path.strip("/")
         if not clean:
             return
@@ -2660,7 +2688,13 @@ def main() -> None:
         used_review_slugs.add(slug)
 
     review_slug_by_post_id: dict[int, str] = {}
+    PRODUCT_DETAIL_PATHS.clear()
     for item in review_entries.values():
+        detail_path = f"/products/{item['slug']}/"
+        url = external_http_url(str(item.get("url", "")))
+        if url:
+            PRODUCT_DETAIL_PATHS.setdefault(url, detail_path)
+        PRODUCT_DETAIL_PATHS.setdefault(html_to_text(item["title"]).strip().casefold(), detail_path)
         post_id = int(item.get("post_id") or 0)
         if item.get("source") == "woo" and post_id:
             review_slug_by_post_id[post_id] = item["slug"]
@@ -2746,9 +2780,9 @@ def main() -> None:
             )
             content_html = link_unlinked_images(content_html, buy_url)
             if post_route:
-                register_product_redirect(post_route, buy_url)
+                register_product_redirect(post_route, product_url)
             if post.post_name:
-                register_product_redirect(f"product/{post.post_name}", buy_url)
+                register_product_redirect(f"product/{post.post_name}", product_url)
 
         article_image = ""
         article_read_minutes = 0
@@ -2991,6 +3025,8 @@ def main() -> None:
             )
 
         canonical = build_canonical(route)
+        if post.post_type == "product":
+            canonical = build_canonical(f"products/{review_slug_by_post_id[post.post_id]}")
         add_page_image(canonical, featured_img_url)
         add_page_image(canonical, article_image)
         for cegg_item in cegg_products:
@@ -3066,12 +3102,6 @@ def main() -> None:
                 "description": meta_description,
                 "image": [absolute_url(featured_img_url)] if featured_img_url else [DOMAIN + logo_url],
             }
-            if buy_url:
-                product_schema["offers"] = {
-                    "@type": "Offer",
-                    "url": buy_url,
-                    "availability": "https://schema.org/InStock",
-                }
             json_ld.append(product_schema)
         elif is_recommendation and recommendation_page_products:
             recommendation_schema = {
@@ -3087,7 +3117,7 @@ def main() -> None:
                             "@type": "ListItem",
                             "position": idx + 1,
                             "name": str(item.get("title", "")).strip(),
-                            "url": external_http_url(str(item.get("url", "")).strip()) or canonical,
+                            "url": absolute_url(product_detail_path(item)) or external_http_url(str(item.get("url", "")).strip()) or canonical,
                         }
                         for idx, item in enumerate(recommendation_page_products)
                         if str(item.get("title", "")).strip()
@@ -3122,7 +3152,7 @@ def main() -> None:
                 robots_directive=robots_directive,
             ),
         )
-        exclude_from_index = post.post_type == "page" and route == "blog"
+        exclude_from_index = post.post_type == "product" or (post.post_type == "page" and route == "blog")
         if not exclude_from_index:
             add_sitemap_url(canonical, post.post_modified or post.post_date)
         search_kind = "Page"
@@ -3183,16 +3213,21 @@ def main() -> None:
         cta = ""
         if amazon_url:
             cta = f'<p><a class="btn btn-large" href="{html.escape(amazon_url)}" rel="sponsored nofollow noopener" target="_blank">View on Amazon</a></p>'
-            register_product_redirect(product_path, amazon_url)
 
         description = (entry.get("description") or "").strip()
+        description_text = html_to_text(description).strip()
+        product_is_indexable = bool(description_text) and description_text.casefold() != html_to_text(entry["title"]).strip().casefold()
         review_body = rewrite_urls(sanitize_html_content(description)) if description else ""
         if review_body:
             review_body = ensure_image_alt_attributes(review_body, fallback_alt=entry["title"])
         if review_body and not re.search(r"<[a-zA-Z!/]", review_body):
             review_body = f"<p>{html.escape(review_body)}</p>"
         if not review_body:
-            review_body = f"<p>{html.escape(entry['title'])}</p>"
+            review_body = (
+                f"<p>{html.escape(entry['title'])}</p>"
+                "<p>Check the retailer for current specifications, included filters, price, and availability. "
+                "Use the related guides below to compare options before buying.</p>"
+            )
         review_body = link_unlinked_images(review_body, amazon_url)
         product_focus_text = f"{entry['title']} {description}"
         product_related_articles = select_related_articles(
@@ -3252,16 +3287,9 @@ def main() -> None:
             "url": canonical,
             "image": [absolute_url(image_url)] if image_url else [DOMAIN + logo_url],
             "description": meta_description,
-            "brand": {"@type": "Brand", "name": "Air Purifying Systems"},
         }
         if entry.get("sku"):
             product_schema["sku"] = entry["sku"]
-        if amazon_url:
-            product_schema["offers"] = {
-                "@type": "Offer",
-                "url": amazon_url,
-                "availability": "https://schema.org/InStock",
-            }
 
         json_ld = [
             {
@@ -3293,10 +3321,12 @@ def main() -> None:
             site_icon_url=site_icon_url,
             recommendations_nav_html=recommendation_dropdown_html,
             og_type="product",
+            robots_directive=("index" if product_is_indexable else "noindex") + ",follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1",
         )
 
         write_text(OUT_ROOT / product_path / "index.html", html_doc)
-        add_sitemap_url(canonical, entry_modified)
+        if product_is_indexable:
+            add_sitemap_url(canonical, entry_modified)
         product_index_entries.append(
             {
                 "title": str(entry["title"]),
@@ -3306,11 +3336,11 @@ def main() -> None:
         )
 
         card_image_html = ""
-        card_target = amazon_url or f"/{product_path}/"
-        card_target_attrs = (
-            ' rel="sponsored nofollow noopener" target="_blank"'
-            if amazon_url
-            else ""
+        card_target = f"/{product_path}/"
+        card_target_attrs = ""
+        card_buy_link = (
+            f'<a class="btn" href="{html.escape(amazon_url)}" rel="sponsored nofollow noopener" target="_blank">View on Amazon</a>'
+            if amazon_url else ""
         )
         card_facets = product_filter_facets(entry)
         card_use_case_labels = card_facets.get("use_cases", [])
@@ -3356,7 +3386,8 @@ def main() -> None:
             f"""<article class="product-card" data-product-item data-product-search="{html.escape(card_search_blob.lower())}" data-product-use-cases="{html.escape(card_use_case_values)}" data-product-rooms="{html.escape(card_room_values)}" data-product-features="{html.escape(card_feature_values)}">
   <figure>{card_image_html}</figure>
   <h3><a href="{html.escape(card_target)}"{card_target_attrs}>{html.escape(entry['title'])}</a></h3>
-  <p><a class="btn" href="{html.escape(card_target)}"{card_target_attrs}>{"View on Amazon" if amazon_url else "Open product"}</a></p>
+  <p><a class="section-link" href="{html.escape(card_target)}">Product details</a></p>
+  <p>{card_buy_link}</p>
 </article>"""
         )
 
@@ -3405,8 +3436,8 @@ def main() -> None:
 <section class="hero hero-home">
   <div class="hero-main">
     <p class="eyebrow">Air Quality Guides And Product Picks</p>
-    <h1>{html.escape(blogname)}</h1>
-    <p class="hero-lead">{html.escape(blogdesc)}</p>
+    <h1>Air Purifier Reviews &amp; Buying Guides</h1>
+    <p class="hero-lead">{html.escape(HOME_DESCRIPTION)}</p>
     <p class="hero-links"><a class="btn btn-large" href="/products/">Browse Products</a> <a class="btn ghost" href="/articles/">Read Articles</a></p>
   </div>
   <aside class="hero-panel" aria-label="Site highlights">
@@ -3424,7 +3455,7 @@ def main() -> None:
     <h2>Featured Products</h2>
     <a class="section-link" href="/products/">See all products</a>
   </div>
-  <p class="section-intro">Direct Amazon links with quick access to specs and context.</p>
+  <p class="section-intro">Explore product details and related guides, then check current prices on Amazon.</p>
   <div class="product-grid" data-featured-products>
     {''.join(product_cards[:12])}
   </div>
@@ -3467,7 +3498,7 @@ def main() -> None:
             "@type": "WebSite",
             "name": SITE_NAME,
             "url": DOMAIN,
-            "description": blogdesc,
+            "description": HOME_DESCRIPTION,
         },
     ]
     if home_latest_entries:
@@ -3509,8 +3540,8 @@ def main() -> None:
     write_text(
         OUT_ROOT / "index.html",
         layout_html(
-            page_title=f"{blogname} | {blogdesc}",
-            meta_description=normalize_meta_description(blogdesc, fallback=SITE_TAGLINE),
+            page_title=f"Air Purifier Reviews & Buying Guides | {blogname}",
+            meta_description=HOME_DESCRIPTION,
             canonical=home_canonical,
             body_class="type-home",
             main_html=home_html,
@@ -3556,7 +3587,7 @@ def main() -> None:
         layout_html(
             page_title=f"Air Purifier Products | {blogname}",
             meta_description=normalize_meta_description(
-                "Air purifier products with direct product links and practical filtering tools.",
+                "Compare air purifiers and replacement filters by room, use case, and features. Read product details and related guides before checking Amazon prices.",
                 fallback=blogdesc,
             ),
             canonical=products_canonical,
@@ -3564,8 +3595,8 @@ def main() -> None:
             main_html=f"""
 <section class="content-section">
   {products_breadcrumbs}
-  <h1>Products</h1>
-  <p>Browse all discovered air purifier products with direct product links. Filter by use case, room size, and key features.</p>
+  <h1>Air Purifiers &amp; Replacement Filters</h1>
+  <p>Explore product details and related buying guides. Filter by use case, room size, and key features, then check current prices and availability on Amazon.</p>
   <div class="product-filter-root" data-product-filter-root>
     <div class="product-filter-controls">
       <label class="product-filter-field is-search" for="product-search">
@@ -3919,6 +3950,8 @@ def main() -> None:
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
     ]
     for page_url in sorted(images_by_page):
+        if page_url not in unique_sitemap:
+            continue
         page_images = sorted(images_by_page[page_url])
         if not page_images:
             continue
@@ -3932,7 +3965,23 @@ def main() -> None:
     image_sitemap_xml.append("</urlset>")
     write_text(OUT_ROOT / "sitemap-images.xml", "\n".join(image_sitemap_xml) + "\n")
 
-    robots = f"""User-agent: *
+    robots = f"""# Search indexing and user-requested discovery are welcome.
+# Cloudflare's managed training restrictions are configured separately.
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: DuckDuckBot
+User-agent: Applebot
+User-agent: Baiduspider
+User-agent: PetalBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+Allow: /
+
+User-agent: *
 Allow: /
 
 Sitemap: {DOMAIN}/sitemap.xml
@@ -3946,12 +3995,12 @@ Sitemap: {DOMAIN}/sitemap-images.xml
         "/home/ / 301",
         "/blog /articles/ 301",
         "/blog/ /articles/ 301",
-        "/reviews /products 301",
+        "/reviews /products/ 301",
         "/reviews/ /products/ 301",
         "/reviews/* /products/:splat 301",
     ]
     for source_path in sorted(product_redirects):
-        redirect_lines.append(f"{source_path} {product_redirects[source_path]} 302")
+        redirect_lines.append(f"{source_path} {product_redirects[source_path]} 301")
     redirects = "\n".join(redirect_lines) + "\n"
     write_text(OUT_ROOT / "_redirects", redirects)
 
@@ -3983,7 +4032,17 @@ This repository contains a static rebuild of the original WordPress site content
 
 ```bash
 python3 build_site.py
+python3 validate_site.py
 ```
+
+The builder uses the original WordPress SQL backup and reuses local uploads when
+available. It overwrites generated output without deleting unrelated files.
+Use `--output-dir /tmp/airpurify-preview --uploads-dir /path/to/uploads` to build
+into a separate directory. Run `python3 validate_site.py /tmp/airpurify-preview`
+to check that output. Article dates remain the original content dates.
+
+See [DISCOVERABILITY.md](DISCOVERABILITY.md) for the crawl policy, deployment
+checks, and remaining editorial improvements.
 
 ## Deploy to Cloudflare Pages
 
@@ -3997,6 +4056,16 @@ The project is fully static and ready for GitHub + Cloudflare Pages deployment.
 
     # styles
     styles = """/* Airy minimalist system */
+.affiliate-notice {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d3dce9;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #5f728f;
+  font-size: 0.875rem;
+}
+
 :root {
   --bg: #f3f7fc;
   --surface: #ffffff;
@@ -5645,4 +5714,13 @@ main.shell {
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output-dir", type=Path, default=OUT_ROOT)
+    local_uploads = OUT_ROOT / "assets/uploads"
+    parser.add_argument("--uploads-dir", type=Path, default=local_uploads if local_uploads.exists() else UPLOADS_PATH)
+    args = parser.parse_args()
+    OUT_ROOT = args.output_dir.resolve()
+    ASSETS_DIR = OUT_ROOT / "assets"
+    UPLOADS_OUT = ASSETS_DIR / "uploads"
+    UPLOADS_PATH = args.uploads_dir.resolve()
     main()

@@ -1,3 +1,19 @@
+# Search indexing and user-requested discovery are welcome.
+# Cloudflare's managed training restrictions are configured separately.
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: DuckDuckBot
+User-agent: Applebot
+User-agent: Baiduspider
+User-agent: PetalBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+Allow: /
+
 User-agent: *
 Allow: /
 

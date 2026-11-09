@@ -69,6 +69,7 @@
 
   <main class="shell">
     
+    
 <article class="page-article">
   <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="https://airpurify.ing/">Home</a><span class="crumb-sep">/</span><span aria-current="page">Privacy Statement (CA)</span></nav>
   <header class="content-header">
@@ -86,6 +87,7 @@
     <div class="shell footer-grid">
       <p>Air Purifying Systems. Sharing and reviewing the best rated air purifiers.</p>
       <p>Affiliate disclosure: As an Amazon Associate, this website may earn from qualifying purchases.</p>
+      <nav aria-label="Site information"><a href="/air-purifier-buying-guide/">Buying guide</a> · <a href="/contact/">Contact</a> · <a href="/disclaimer/">Disclosure</a> · <a href="/privacy-policy/">Privacy</a></nav>
       <p><a href="https://hepacertified.com/" rel="noopener">hepacertified.com</a></p>
     </div>
   </footer>
@@ -188,6 +190,33 @@
         .split('|')
         .map((value) => value.trim().toLowerCase())
         .filter(Boolean);
+
+    const featuredProductsGrid = document.querySelector('[data-featured-products]');
+    if (featuredProductsGrid) {
+      const featuredProductCount = 12;
+      fetch('/products/', { cache: 'force-cache' })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Unable to load product catalog');
+          }
+          return response.text();
+        })
+        .then((catalogHtml) => {
+          const catalog = new DOMParser().parseFromString(catalogHtml, 'text/html');
+          const products = Array.from(catalog.querySelectorAll('.product-grid [data-product-item]'));
+          for (let index = products.length - 1; index > 0; index -= 1) {
+            const randomIndex = Math.floor(Math.random() * (index + 1));
+            [products[index], products[randomIndex]] = [products[randomIndex], products[index]];
+          }
+          const featuredProducts = products
+            .slice(0, featuredProductCount)
+            .map((product) => document.importNode(product, true));
+          if (featuredProducts.length) {
+            featuredProductsGrid.replaceChildren(...featuredProducts);
+          }
+        })
+        .catch(() => {});
+    }
 
     const productFilterRoots = document.querySelectorAll('[data-product-filter-root]');
     for (const root of productFilterRoots) {

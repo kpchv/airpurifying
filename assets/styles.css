@@ -1,4 +1,14 @@
 /* Airy minimalist system */
+.affiliate-notice {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d3dce9;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #5f728f;
+  font-size: 0.875rem;
+}
+
 :root {
   --bg: #f3f7fc;
   --surface: #ffffff;

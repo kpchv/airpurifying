@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="/assets/styles.css">
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Organization", "name": "Air Purifying Systems", "url": "https://airpurify.ing", "logo": "https://airpurify.ing/assets/uploads/2024/01/airpurifying-systems-logo.svg", "sameAs": ["https://hepacertified.com/"]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://airpurify.ing/"}, {"@type": "ListItem", "position": 2, "name": "Products", "item": "https://airpurify.ing/products/"}, {"@type": "ListItem", "position": 3, "name": "NuWave OxyPure Air Purifier", "item": "https://airpurify.ing/products/nuwave-oxypure-air-purifier/"}]}</script>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Product", "name": "NuWave OxyPure Air Purifier", "url": "https://airpurify.ing/products/nuwave-oxypure-air-purifier/", "image": ["https://airpurify.ing/assets/uploads/2024/01/nuwave-oxypure-air-purifier.jpg"], "description": "PERFECT FOR ULTRA-LARGE ROOMS: Improve indoor air circulation and purify 2,934ft² spaces in 60 minutes, or 586ft² in 12 minutes (CADR: 664.6 m³/h). The top-performi…", "brand": {"@type": "Brand", "name": "Air Purifying Systems"}, "sku": "B07QPW9HL6", "offers": {"@type": "Offer", "url": "https://www.amazon.com/dp/B07QPW9HL6/ref=sspa_dk_detail_0?pd_rd_i=B07QPW9HL6&pd_rd_w=lgAaQ&content-id=amzn1.sym.d81b167d-1f9e-48b6-87d8-8aa5e473ea8c&pf_rd_p=d81b167d-1f9e-48b6-87d8-8aa5e473ea8c&pf_rd_r=ZWRB13HXDSW826K19RQH&pd_rd_wg=BpGy3&pd_rd_r=9b9c1e9f-81ad-49c2-9e13-ed95ac5e31d4&s=home-garden&sp_csd=d2lkZ2V0TmFtZT1zcF9kZXRhaWxfdGhlbWF0aWM&th=1&tag=homemag-20", "availability": "https://schema.org/InStock"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Product", "name": "NuWave OxyPure Air Purifier", "url": "https://airpurify.ing/products/nuwave-oxypure-air-purifier/", "image": ["https://airpurify.ing/assets/uploads/2024/01/nuwave-oxypure-air-purifier.jpg"], "description": "PERFECT FOR ULTRA-LARGE ROOMS: Improve indoor air circulation and purify 2,934ft² spaces in 60 minutes, or 586ft² in 12 minutes (CADR: 664.6 m³/h). The top-performi…", "sku": "B07QPW9HL6"}</script>
 </head>
 <body class="type-product-detail">
   <header class="site-header">
@@ -68,6 +68,7 @@
   </header>
 
   <main class="shell">
+    <p class="affiliate-notice">As an Amazon Associate, we earn from qualifying purchases. <a href="/disclaimer/">Affiliate disclosure</a>.</p>
     
 <article class="page-article review-article">
   <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="https://airpurify.ing/">Home</a><span class="crumb-sep">/</span><a href="https://airpurify.ing/products/">Products</a><span class="crumb-sep">/</span><span aria-current="page">NuWave OxyPure Air Purifier</span></nav>
@@ -139,6 +140,7 @@
     <div class="shell footer-grid">
       <p>Air Purifying Systems. Sharing and reviewing the best rated air purifiers.</p>
       <p>Affiliate disclosure: As an Amazon Associate, this website may earn from qualifying purchases.</p>
+      <nav aria-label="Site information"><a href="/air-purifier-buying-guide/">Buying guide</a> · <a href="/contact/">Contact</a> · <a href="/disclaimer/">Disclosure</a> · <a href="/privacy-policy/">Privacy</a></nav>
       <p><a href="https://hepacertified.com/" rel="noopener">hepacertified.com</a></p>
     </div>
   </footer>
@@ -241,6 +243,33 @@
         .split('|')
         .map((value) => value.trim().toLowerCase())
         .filter(Boolean);
+
+    const featuredProductsGrid = document.querySelector('[data-featured-products]');
+    if (featuredProductsGrid) {
+      const featuredProductCount = 12;
+      fetch('/products/', { cache: 'force-cache' })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Unable to load product catalog');
+          }
+          return response.text();
+        })
+        .then((catalogHtml) => {
+          const catalog = new DOMParser().parseFromString(catalogHtml, 'text/html');
+          const products = Array.from(catalog.querySelectorAll('.product-grid [data-product-item]'));
+          for (let index = products.length - 1; index > 0; index -= 1) {
+            const randomIndex = Math.floor(Math.random() * (index + 1));
+            [products[index], products[randomIndex]] = [products[randomIndex], products[index]];
+          }
+          const featuredProducts = products
+            .slice(0, featuredProductCount)
+            .map((product) => document.importNode(product, true));
+          if (featuredProducts.length) {
+            featuredProductsGrid.replaceChildren(...featuredProducts);
+          }
+        })
+        .catch(() => {});
+    }
 
     const productFilterRoots = document.querySelectorAll('[data-product-filter-root]');
     for (const root of productFilterRoots) {

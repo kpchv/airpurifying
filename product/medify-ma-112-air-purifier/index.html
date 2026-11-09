@@ -6,13 +6,13 @@
   <title>Medify MA-112 Air Purifier | Air Purifying Systems</title>
   <meta name="description" content="Medify MA-112 Air Purifier">
   <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
-  <link rel="canonical" href="https://airpurify.ing/medify-ma-112-air-purifier/">
+  <link rel="canonical" href="https://airpurify.ing/products/medify-ma-112-air-purifier/">
   <meta property="og:locale" content="en_US">
   <meta property="og:type" content="product">
   <meta property="og:site_name" content="Air Purifying Systems">
   <meta property="og:title" content="Medify MA-112 Air Purifier | Air Purifying Systems">
   <meta property="og:description" content="Medify MA-112 Air Purifier">
-  <meta property="og:url" content="https://airpurify.ing/medify-ma-112-air-purifier/">
+  <meta property="og:url" content="https://airpurify.ing/products/medify-ma-112-air-purifier/">
   <meta property="og:image" content="https://airpurify.ing/assets/uploads/2024/01/medify-ma-112-air-purifier.png.jpg.webp">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Medify MA-112 Air Purifier | Air Purifying Systems">
@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="/assets/styles.css">
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Organization", "name": "Air Purifying Systems", "url": "https://airpurify.ing", "logo": "https://airpurify.ing/assets/uploads/2024/01/airpurifying-systems-logo.svg", "sameAs": ["https://hepacertified.com/"]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://airpurify.ing/"}, {"@type": "ListItem", "position": 2, "name": "Products", "item": "https://airpurify.ing/products/"}, {"@type": "ListItem", "position": 3, "name": "Medify MA-112 Air Purifier", "item": "https://airpurify.ing/medify-ma-112-air-purifier/"}]}</script>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Product", "name": "Medify MA-112 Air Purifier", "url": "https://airpurify.ing/medify-ma-112-air-purifier/", "description": "Medify MA-112 Air Purifier", "image": ["https://airpurify.ing/assets/uploads/2024/01/medify-ma-112-air-purifier.png.jpg.webp"], "offers": {"@type": "Offer", "url": "https://amzn.to/47WJKGc?tag=homemag-20", "availability": "https://schema.org/InStock"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Product", "name": "Medify MA-112 Air Purifier", "url": "https://airpurify.ing/products/medify-ma-112-air-purifier/", "description": "Medify MA-112 Air Purifier", "image": ["https://airpurify.ing/assets/uploads/2024/01/medify-ma-112-air-purifier.png.jpg.webp"]}</script>
 </head>
 <body class="type-product">
   <header class="site-header">
@@ -68,6 +68,7 @@
   </header>
 
   <main class="shell">
+    <p class="affiliate-notice">As an Amazon Associate, we earn from qualifying purchases. <a href="/disclaimer/">Affiliate disclosure</a>.</p>
     
 <article class="page-article">
   <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="https://airpurify.ing/">Home</a><span class="crumb-sep">/</span><a href="https://airpurify.ing/products/">Products</a><span class="crumb-sep">/</span><span aria-current="page">Medify MA-112 Air Purifier</span></nav>
@@ -88,6 +89,7 @@
     <div class="shell footer-grid">
       <p>Air Purifying Systems. Sharing and reviewing the best rated air purifiers.</p>
       <p>Affiliate disclosure: As an Amazon Associate, this website may earn from qualifying purchases.</p>
+      <nav aria-label="Site information"><a href="/air-purifier-buying-guide/">Buying guide</a> · <a href="/contact/">Contact</a> · <a href="/disclaimer/">Disclosure</a> · <a href="/privacy-policy/">Privacy</a></nav>
       <p><a href="https://hepacertified.com/" rel="noopener">hepacertified.com</a></p>
     </div>
   </footer>
@@ -190,6 +192,33 @@
         .split('|')
         .map((value) => value.trim().toLowerCase())
         .filter(Boolean);
+
+    const featuredProductsGrid = document.querySelector('[data-featured-products]');
+    if (featuredProductsGrid) {
+      const featuredProductCount = 12;
+      fetch('/products/', { cache: 'force-cache' })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Unable to load product catalog');
+          }
+          return response.text();
+        })
+        .then((catalogHtml) => {
+          const catalog = new DOMParser().parseFromString(catalogHtml, 'text/html');
+          const products = Array.from(catalog.querySelectorAll('.product-grid [data-product-item]'));
+          for (let index = products.length - 1; index > 0; index -= 1) {
+            const randomIndex = Math.floor(Math.random() * (index + 1));
+            [products[index], products[randomIndex]] = [products[randomIndex], products[index]];
+          }
+          const featuredProducts = products
+            .slice(0, featuredProductCount)
+            .map((product) => document.importNode(product, true));
+          if (featuredProducts.length) {
+            featuredProductsGrid.replaceChildren(...featuredProducts);
+          }
+        })
+        .catch(() => {});
+    }
 
     const productFilterRoots = document.querySelectorAll('[data-product-filter-root]');
     for (const root of productFilterRoots) {

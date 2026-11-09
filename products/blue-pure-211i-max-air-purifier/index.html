@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="/assets/styles.css">
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Organization", "name": "Air Purifying Systems", "url": "https://airpurify.ing", "logo": "https://airpurify.ing/assets/uploads/2024/01/airpurifying-systems-logo.svg", "sameAs": ["https://hepacertified.com/"]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://airpurify.ing/"}, {"@type": "ListItem", "position": 2, "name": "Products", "item": "https://airpurify.ing/products/"}, {"@type": "ListItem", "position": 3, "name": "Blue Pure 211i Max Air Purifier", "item": "https://airpurify.ing/products/blue-pure-211i-max-air-purifier/"}]}</script>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Product", "name": "Blue Pure 211i Max Air Purifier", "url": "https://airpurify.ing/products/blue-pure-211i-max-air-purifier/", "image": ["https://airpurify.ing/assets/uploads/2024/01/Blue211i-Gallery4.jpg"], "description": "BLUEAIR’S TOP-PERFORMING AIR PURIFIER LINE: Blue family’s new Pure Max series with our proprietary HEPASilent performance now even better with up to 83% faster clea…", "brand": {"@type": "Brand", "name": "Air Purifying Systems"}, "sku": "B0BN2MGV5H", "offers": {"@type": "Offer", "url": "https://www.amazon.com/BLUEAIR-Purifiers-HEPASilent-Allergies-Purifier/dp/B0BN2MGV5H/ref=sr_1_1_sspa?crid=17D6RF6NGH8TT&dib=eyJ2IjoiMSJ9.GOvPuxV4iCBhP85gbyfs9X9qOe_kAFA2Trq_u8hDbpMdJ2xg9KIHL72h-oLfr1CLTTzD9JfZFKhtBFnTcCfHW9qJBIqmYkDvbg2mCvIqeUtBS5X_9lgd9KY9JX9lK8kPlUn0Qv43DpSJHRibwhw75kdd_d76W3KymVfTKs4SSp9Tq9q8gjDRymoj0XnMgaFTOKaE124jPbZ3JMsKzgpr1vLPYif2ihyVHg4XeSfQY6M.qwNeiRjdgMenpKtg7urU_FQpUYLd_otY4tt20dNNmg0&dib_tag=se&keywords=blue%2Bpure%2B211i%2Bmax&qid=1705564267&sprefix=%2Caps%2C194&sr=8-1-spons&ufe=app_do%3Aamzn1.fos.c3015c4a-46bb-44b9-81a4-dc28e6d374b3&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&th=1&tag=homemag-20", "availability": "https://schema.org/InStock"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Product", "name": "Blue Pure 211i Max Air Purifier", "url": "https://airpurify.ing/products/blue-pure-211i-max-air-purifier/", "image": ["https://airpurify.ing/assets/uploads/2024/01/Blue211i-Gallery4.jpg"], "description": "BLUEAIR’S TOP-PERFORMING AIR PURIFIER LINE: Blue family’s new Pure Max series with our proprietary HEPASilent performance now even better with up to 83% faster clea…", "sku": "B0BN2MGV5H"}</script>
 </head>
 <body class="type-product-detail">
   <header class="site-header">
@@ -68,6 +68,7 @@
   </header>
 
   <main class="shell">
+    <p class="affiliate-notice">As an Amazon Associate, we earn from qualifying purchases. <a href="/disclaimer/">Affiliate disclosure</a>.</p>
     
 <article class="page-article review-article">
   <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="https://airpurify.ing/">Home</a><span class="crumb-sep">/</span><a href="https://airpurify.ing/products/">Products</a><span class="crumb-sep">/</span><span aria-current="page">Blue Pure 211i Max Air Purifier</span></nav>
@@ -139,6 +140,7 @@
     <div class="shell footer-grid">
       <p>Air Purifying Systems. Sharing and reviewing the best rated air purifiers.</p>
       <p>Affiliate disclosure: As an Amazon Associate, this website may earn from qualifying purchases.</p>
+      <nav aria-label="Site information"><a href="/air-purifier-buying-guide/">Buying guide</a> · <a href="/contact/">Contact</a> · <a href="/disclaimer/">Disclosure</a> · <a href="/privacy-policy/">Privacy</a></nav>
       <p><a href="https://hepacertified.com/" rel="noopener">hepacertified.com</a></p>
     </div>
   </footer>
@@ -241,6 +243,33 @@
         .split('|')
         .map((value) => value.trim().toLowerCase())
         .filter(Boolean);
+
+    const featuredProductsGrid = document.querySelector('[data-featured-products]');
+    if (featuredProductsGrid) {
+      const featuredProductCount = 12;
+      fetch('/products/', { cache: 'force-cache' })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Unable to load product catalog');
+          }
+          return response.text();
+        })
+        .then((catalogHtml) => {
+          const catalog = new DOMParser().parseFromString(catalogHtml, 'text/html');
+          const products = Array.from(catalog.querySelectorAll('.product-grid [data-product-item]'));
+          for (let index = products.length - 1; index > 0; index -= 1) {
+            const randomIndex = Math.floor(Math.random() * (index + 1));
+            [products[index], products[randomIndex]] = [products[randomIndex], products[index]];
+          }
+          const featuredProducts = products
+            .slice(0, featuredProductCount)
+            .map((product) => document.importNode(product, true));
+          if (featuredProducts.length) {
+            featuredProductsGrid.replaceChildren(...featuredProducts);
+          }
+        })
+        .catch(() => {});
+    }
 
     const productFilterRoots = document.querySelectorAll('[data-product-filter-root]');
     for (const root of productFilterRoots) {

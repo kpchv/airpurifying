@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="/assets/styles.css">
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Organization", "name": "Air Purifying Systems", "url": "https://airpurify.ing", "logo": "https://airpurify.ing/assets/uploads/2024/01/airpurifying-systems-logo.svg", "sameAs": ["https://hepacertified.com/"]}</script>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://airpurify.ing/"}, {"@type": "ListItem", "position": 2, "name": "Products", "item": "https://airpurify.ing/products/"}, {"@type": "ListItem", "position": 3, "name": "LEVOIT EverestAir® Smart Air Purifier - Extra Large Rooms", "item": "https://airpurify.ing/products/levoit-everestair-smart-air-purifier/"}]}</script>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Product", "name": "LEVOIT EverestAir® Smart Air Purifier - Extra Large Rooms", "url": "https://airpurify.ing/products/levoit-everestair-smart-air-purifier/", "image": ["https://airpurify.ing/assets/uploads/2024/01/01.00_WA1_0722LAP-EL551S-WUS_01_1.png.webp"], "description": "AIR CIRCULATION SYSTEM: Combining a large fan and unique fan duct design, the EverestAir quickly purifies the air in your largest rooms. With adjustable vent angles…", "brand": {"@type": "Brand", "name": "Air Purifying Systems"}, "sku": "B0B252LDH7", "offers": {"@type": "Offer", "url": "https://www.amazon.com/LEVOIT-Purifiers-Captures-Particles-Allergies/dp/B0B252LDH7/ref=sr_1_1_sspa?crid=2H7B4XA3PIBR1&dib=eyJ2IjoiMSJ9.XudDmr0DOlzk5c2c_QziSwjSfLvrcgTBcn9z7Fwo6yyhme7ZI7R7Q5V-nxyNSFU7G_Itgdb0OeQKE4qN8ThG38YkthR5kHKvRzbNAeee6bkLIqXMrEzxvgw0HZyI0Sz2b1-Z5kauG2IjDFVwZO0K5nzRt8TESb9tMPs80SxqGfh9tIqWYkNIwP0dbScquXtHHe5ppglzoULXo4UZuqoLb7JNy0F_g1AWbE4bdo0A_FI.VPuLoPtz2uJMTq-DrKEjzCow5gxZMAdgfUFAmGQjU_w&dib_tag=se&keywords=levoit+EverestAir&qid=1705649398&sprefix=levoit+everestair%2Caps%2C298&sr=8-1-spons&ufe=app_do%3Aamzn1.fos.c3015c4a-46bb-44b9-81a4-dc28e6d374b3&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&psc=1&tag=homemag-20", "availability": "https://schema.org/InStock"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Product", "name": "LEVOIT EverestAir® Smart Air Purifier - Extra Large Rooms", "url": "https://airpurify.ing/products/levoit-everestair-smart-air-purifier/", "image": ["https://airpurify.ing/assets/uploads/2024/01/01.00_WA1_0722LAP-EL551S-WUS_01_1.png.webp"], "description": "AIR CIRCULATION SYSTEM: Combining a large fan and unique fan duct design, the EverestAir quickly purifies the air in your largest rooms. With adjustable vent angles…", "sku": "B0B252LDH7"}</script>
 </head>
 <body class="type-product-detail">
   <header class="site-header">
@@ -68,6 +68,7 @@
   </header>
 
   <main class="shell">
+    <p class="affiliate-notice">As an Amazon Associate, we earn from qualifying purchases. <a href="/disclaimer/">Affiliate disclosure</a>.</p>
     
 <article class="page-article review-article">
   <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="https://airpurify.ing/">Home</a><span class="crumb-sep">/</span><a href="https://airpurify.ing/products/">Products</a><span class="crumb-sep">/</span><span aria-current="page">LEVOIT EverestAir® Smart Air Purifier - Extra Large Rooms</span></nav>
@@ -139,6 +140,7 @@
     <div class="shell footer-grid">
       <p>Air Purifying Systems. Sharing and reviewing the best rated air purifiers.</p>
       <p>Affiliate disclosure: As an Amazon Associate, this website may earn from qualifying purchases.</p>
+      <nav aria-label="Site information"><a href="/air-purifier-buying-guide/">Buying guide</a> · <a href="/contact/">Contact</a> · <a href="/disclaimer/">Disclosure</a> · <a href="/privacy-policy/">Privacy</a></nav>
       <p><a href="https://hepacertified.com/" rel="noopener">hepacertified.com</a></p>
     </div>
   </footer>
@@ -241,6 +243,33 @@
         .split('|')
         .map((value) => value.trim().toLowerCase())
         .filter(Boolean);
+
+    const featuredProductsGrid = document.querySelector('[data-featured-products]');
+    if (featuredProductsGrid) {
+      const featuredProductCount = 12;
+      fetch('/products/', { cache: 'force-cache' })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Unable to load product catalog');
+          }
+          return response.text();
+        })
+        .then((catalogHtml) => {
+          const catalog = new DOMParser().parseFromString(catalogHtml, 'text/html');
+          const products = Array.from(catalog.querySelectorAll('.product-grid [data-product-item]'));
+          for (let index = products.length - 1; index > 0; index -= 1) {
+            const randomIndex = Math.floor(Math.random() * (index + 1));
+            [products[index], products[randomIndex]] = [products[randomIndex], products[index]];
+          }
+          const featuredProducts = products
+            .slice(0, featuredProductCount)
+            .map((product) => document.importNode(product, true));
+          if (featuredProducts.length) {
+            featuredProductsGrid.replaceChildren(...featuredProducts);
+          }
+        })
+        .catch(() => {});
+    }
 
     const productFilterRoots = document.querySelectorAll('[data-product-filter-root]');
     for (const root of productFilterRoots) {
