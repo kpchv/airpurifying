@@ -1460,18 +1460,12 @@ def layout_html(
   </script>
 """
 
-    verification_meta = (
-        "  <meta name='impact-site-verification' value='3bc51d90-28da-4620-8c14-fbd992b3ed1e'>\n"
-        if body_class == "type-home"
-        else ""
-    )
-
     return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-{verification_meta}  <title>{html.escape(page_title)}</title>
+  <title>{html.escape(page_title)}</title>
   <meta name="description" content="{html.escape(meta_description)}">
   <meta name="robots" content="{html.escape(robots_directive)}">
   <link rel="canonical" href="{html.escape(canonical)}">
